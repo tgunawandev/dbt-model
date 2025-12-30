@@ -1,195 +1,92 @@
 # CLAUDE.md - AI Assistant Instructions
 
-This file provides context for AI assistants (like Claude) working with this dbt project.
-
 ## Project Overview
 
-This is a **dbt (data build tool)** project that builds a data warehouse for multi-company analytics. It consolidates data from three Odoo ERP databases (TLN, TMI, IEG) into a unified analytics layer.
+This is a **dbt data warehouse** for multi-company Odoo ERP analytics. The key design principle is:
 
-## Key Technical Details
+**Accounting (General Ledger) = Source of Financial Truth**
 
-### Database Architecture
+All financial metrics MUST derive from `fct_general_ledger`. Operational modules (sales, inventory) provide context and detail.
 
-- **Target Database**: `analytics_db` on PostgreSQL server `116.203.191.172:5432`
-- **Source Databases**: Connected via PostgreSQL Foreign Data Wrapper (FDW)
-  - `tln_db` -> imported into `tln_raw` schema
-  - `tmi_db` -> imported into `tmi_raw` schema
-  - `ieg_db` -> imported into `ieg_raw` schema
+## Architecture
 
-### Why FDW?
-
-dbt-postgres can only connect to one database at a time. FDW allows us to access multiple databases through a single connection by importing foreign tables into the target database.
-
-### Profile Configuration
-
-The dbt profile is located at `~/.dbt/profiles.yml` (not in the repo for security). The project uses environment variables for credentials:
-
-```yaml
-dbt_model:
-  target: dev
-  outputs:
-    dev:
-      type: postgres
-      host: 116.203.191.172
-      port: 5432
-      user: postgres
-      dbname: analytics_db
 ```
+Staging Layer (by module, not company)
+├── accounting/  → stg_account_move, stg_account_move_line (6.6M rows)
+├── sales/       → stg_sale_order, stg_sale_order_line
+├── inventory/   → stg_stock_move
+├── purchasing/  → stg_purchase_order
+└── master/      → stg_res_partner, stg_product_product
+
+Mart Layer
+├── finance/     → fct_general_ledger (SOURCE OF TRUTH)
+├── sales/       → fct_sales_orders + bridge_sales_to_gl
+└── inventory/   → fct_stock_movements + bridge_stock_to_gl
+```
+
+## Key Design Decisions
+
+1. **Module-based staging** - Organized by Odoo module, not company
+2. **Union pattern** - Each staging model unions tln + tmi + ieg with `source_company` column
+3. **Surrogate keys** - Use `dbt_utils.generate_surrogate_key(['source_company', 'id'])`
+4. **Bridge tables** - Link operational facts to GL for reconciliation
+
+## Database Connection
+
+- **Target**: `analytics_db` on PostgreSQL 116.203.191.172:5432
+- **Source access**: Via Foreign Data Wrapper (FDW)
+  - `tln_raw.*` → tln_db tables
+  - `tmi_raw.*` → tmi_db tables
+  - `ieg_raw.*` → ieg_db tables
 
 ## Common Tasks
 
-### Running dbt
+### Add a new Odoo table
+1. Add to source YAML (e.g., `_accounting_sources.yml`)
+2. Create staging model with union pattern
+3. Link to appropriate mart
 
-```bash
-# With Docker
-docker compose run --rm dbt run
-
-# Without Docker (requires local dbt installation)
-dbt run
+### Check financial reconciliation
+```sql
+-- Sales vs Revenue
+SELECT source_company,
+       SUM(amount_total) as sales_total,
+       (SELECT SUM(credit-debit) FROM fct_general_ledger
+        WHERE financial_statement_section = 'Revenue') as gl_revenue
+FROM fct_sales_orders GROUP BY 1
 ```
 
-### Adding a New Source Table
+### Drill from sales order to GL entries
+```sql
+SELECT * FROM bridge_sales_to_gl WHERE order_number = 'SO12345'
+```
 
-1. Add table to the source YAML file (e.g., `_tln_sources.yml`)
-2. Import the foreign table if needed:
-   ```sql
-   IMPORT FOREIGN SCHEMA public
-       LIMIT TO (new_table_name)
-       FROM SERVER tln_server INTO tln_raw;
-   ```
-3. Create staging model
+## Model Naming
 
-### Adding a New Company/Database
+- Staging: `stg_<table>.sql` (e.g., `stg_account_move.sql`)
+- Facts: `fct_<entity>.sql` (e.g., `fct_general_ledger.sql`)
+- Dimensions: `dim_<entity>.sql` (e.g., `dim_account.sql`)
+- Bridges: `bridge_<from>_to_<to>.sql` (e.g., `bridge_sales_to_gl.sql`)
 
-1. Create FDW server and user mapping in `analytics_db`
-2. Create foreign schema and import tables
-3. Add source YAML file in `models/staging/<company>_db/`
-4. Create staging models
-5. Update intermediate models to union new company data
-6. Update `dbt_project.yml` with new company code variable
+## Key Models
 
-### Creating a New Model
-
-Follow the naming conventions:
-- Staging: `stg_<source>__<entity>.sql` (e.g., `stg_tln__sales_orders.sql`)
-- Intermediate: `int_<description>.sql` (e.g., `int_all_sales_orders.sql`)
-- Marts: `fct_<entity>.sql` or `dim_<entity>.sql`
-
-## Code Style Guidelines
-
-### SQL
-
-- Use lowercase for SQL keywords
-- Use CTEs (Common Table Expressions) for readability
-- Prefix CTEs with descriptive names (`source`, `renamed`, `joined`, `final`)
-- Use explicit column names, avoid `SELECT *` in final output
-- Add `source_company` column to all staging models
-
-### YAML
-
-- Always include descriptions for sources and models
-- Add tests for primary keys (`unique`, `not_null`)
-- Use `accepted_values` tests for enum columns
-
-### Jinja
-
-- Use `{{ ref() }}` for model references
-- Use `{{ source() }}` for source references
-- Use `{{ var() }}` for configuration variables
+| Model | Purpose |
+|-------|---------|
+| `fct_general_ledger` | **SOURCE OF TRUTH** for all financial reporting |
+| `dim_account` | Chart of Accounts with financial statement classification |
+| `fct_trial_balance` | Monthly aggregated by account |
+| `bridge_sales_to_gl` | Sales → Invoice → GL entries |
+| `bridge_stock_to_gl` | Stock movements → GL entries |
 
 ## Testing
 
 ```bash
-# Run all tests
-dbt test
-
-# Test specific model
-dbt test --select fct_sales
-
-# Run with verbose output
-dbt test --debug
+dbt test --select tag:core   # Test core financial models
+dbt test --select reconciliation  # Run reconciliation tests
 ```
-
-### Test Types
-
-1. **Schema tests** - Defined in YAML files (unique, not_null, accepted_values)
-2. **Data tests** - Custom SQL in `tests/` directory
-3. **Source freshness** - Check source data recency
-
-## Materialization Strategy
-
-| Layer | Materialization | Reason |
-|-------|-----------------|--------|
-| Staging | view | Minimal storage, always current |
-| Intermediate | ephemeral | No physical table, compiles into downstream |
-| Marts | table | Performance for analytics queries |
 
 ## Important Files
 
-| File | Purpose |
-|------|---------|
-| `dbt_project.yml` | Project configuration, model settings |
-| `packages.yml` | External dbt packages (dbt_utils, codegen) |
-| `profiles.yml.example` | Template for database connection |
-| `Dockerfile` | Docker image for running dbt |
-| `docker-compose.yml` | Docker services configuration |
-| `.github/workflows/ci.yml` | CI pipeline configuration |
-| `.github/workflows/docker-build.yml` | Docker build pipeline |
-
-## Troubleshooting
-
-### Connection Issues
-
-```bash
-# Test connection
-dbt debug
-
-# Check FDW status
-psql analytics_db -c "SELECT * FROM pg_foreign_server;"
-```
-
-### Model Compilation Errors
-
-```bash
-# Compile without running
-dbt compile --select model_name
-
-# Check compiled SQL
-cat target/compiled/dbt_model/models/.../model_name.sql
-```
-
-### Missing Source Tables
-
-If a source table is missing, import it via FDW:
-
-```sql
-IMPORT FOREIGN SCHEMA public
-    LIMIT TO (table_name)
-    FROM SERVER <company>_server INTO <company>_raw;
-```
-
-## Data Lineage
-
-```
-Source (Odoo DBs)
-    ↓
-Foreign Tables (FDW)
-    ↓
-Staging Models (stg_*)
-    ↓
-Intermediate Models (int_*)
-    ↓
-Mart Models (fct_*, dim_*)
-    ↓
-BI Tools / Analytics
-```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DBT_POSTGRES_HOST` | Database host | 116.203.191.172 |
-| `DBT_POSTGRES_PORT` | Database port | 5432 |
-| `DBT_POSTGRES_USER` | Database user | postgres |
-| `DBT_POSTGRES_PASSWORD` | Database password | (required) |
-| `DBT_TARGET` | dbt target (dev/staging/prod) | dev |
+- `dbt_project.yml` - Project config, model settings
+- `profiles.yml.example` - Connection template
+- `tests/reconciliation/` - Sales/Inventory vs GL checks

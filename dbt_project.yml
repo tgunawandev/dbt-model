@@ -23,32 +23,34 @@ vars:
 
 models:
   dbt_model:
-    # Staging models - views by default for source data
+    # Staging models - organized by module, views by default
     staging:
       +materialized: view
       +schema: staging
-      tln_db:
-        +tags: ['tln', 'staging']
-      tmi_db:
-        +tags: ['tmi', 'staging']
-      ieg_db:
-        +tags: ['ieg', 'staging']
-
-    # Intermediate models - ephemeral or views
-    intermediate:
-      +materialized: ephemeral
-      +schema: intermediate
+      accounting:
+        +tags: ['accounting', 'staging', 'core']
+      sales:
+        +tags: ['sales', 'staging']
+      purchasing:
+        +tags: ['purchasing', 'staging']
+      inventory:
+        +tags: ['inventory', 'staging']
+      master:
+        +tags: ['master', 'staging']
 
     # Mart models - tables for analytics consumption
     marts:
       +materialized: table
       +schema: marts
+      finance:
+        +tags: ['finance', 'mart', 'core']
+        +description: "Finance mart - SOURCE OF TRUTH for financial reporting"
       sales:
         +tags: ['sales', 'mart']
       inventory:
         +tags: ['inventory', 'mart']
-      finance:
-        +tags: ['finance', 'mart']
+      purchasing:
+        +tags: ['purchasing', 'mart']
 
 seeds:
   dbt_model:

@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: dim_account
+    description: "Chart of Accounts dimension with financial statement classification"
+    columns:
+      - name: account_key
+        description: "Surrogate key (globally unique across companies)"
+        tests:
+          - unique
+          - not_null
+      - name: account_code
+        description: "Account code from chart of accounts"
+        tests:
+          - not_null
+      - name: financial_statement_section
+        description: "Classification for financial statements"
+        tests:
+          - accepted_values:
+              values: ['Assets', 'Liabilities', 'Equity', 'Revenue', 'Expenses', 'Other']
+      - name: statement_type
+        description: "Balance Sheet or Income Statement"
+        tests:
+          - accepted_values:
+              values: ['Balance Sheet', 'Income Statement']
+
+  - name: fct_general_ledger
+    description: "General Ledger fact table - THE SOURCE OF TRUTH for all financial reporting"
+    columns:
+      - name: gl_line_key
+        description: "Surrogate key for GL lines"
+        tests:
+          - unique
+          - not_null
+      - name: source_company
+        description: "Company identifier (tln, tmi, ieg)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['tln', 'tmi', 'ieg']
+      - name: debit
+        description: "Debit amount (always positive or zero)"
+      - name: credit
+        description: "Credit amount (always positive or zero)"
+      - name: balance
+        description: "Net balance (debit - credit)"
+
+  - name: fct_trial_balance
+    description: "Trial Balance aggregated by account and month"
+    columns:
+      - name: account_key
+        tests:
+          - not_null
+      - name: total_debit
+        description: "Sum of all debits for the period"
+      - name: total_credit
+        description: "Sum of all credits for the period"
+      - name: net_balance
+        description: "Total debit - Total credit"

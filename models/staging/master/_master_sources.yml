@@ -1,0 +1,34 @@
+version: 2
+
+sources:
+  - name: tln_db
+    schema: tln_raw
+    tables:
+      - name: res_partner
+        description: "Customers, vendors, contacts"
+      - name: res_company
+        description: "Companies"
+      - name: product_product
+        description: "Product variants"
+      - name: product_template
+        description: "Product templates"
+      - name: res_currency
+        description: "Currencies"
+
+  - name: tmi_db
+    schema: tmi_raw
+    tables:
+      - name: res_partner
+      - name: res_company
+      - name: product_product
+      - name: product_template
+      - name: res_currency
+
+  - name: ieg_db
+    schema: ieg_raw
+    tables:
+      - name: res_partner
+      - name: res_company
+      - name: product_product
+      - name: product_template
+      - name: res_currency

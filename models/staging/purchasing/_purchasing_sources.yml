@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: tln_db
+    schema: tln_raw
+    tables:
+      - name: purchase_order
+        description: "Purchase orders"
+      - name: purchase_order_line
+        description: "Purchase order lines"
+
+  - name: tmi_db
+    schema: tmi_raw
+    tables:
+      - name: purchase_order
+      - name: purchase_order_line
+
+  - name: ieg_db
+    schema: ieg_raw
+    tables:
+      - name: purchase_order
+      - name: purchase_order_line

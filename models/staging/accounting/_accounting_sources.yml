@@ -1,0 +1,33 @@
+version: 2
+
+sources:
+  - name: tln_db
+    description: "TLN Company Odoo database (via FDW)"
+    schema: tln_raw
+    tables:
+      - name: account_move
+        description: "Journal entries / Invoices"
+      - name: account_move_line
+        description: "General ledger lines"
+      - name: account_account
+        description: "Chart of accounts"
+      - name: account_journal
+        description: "Journals"
+
+  - name: tmi_db
+    description: "TMI Company Odoo database (via FDW)"
+    schema: tmi_raw
+    tables:
+      - name: account_move
+      - name: account_move_line
+      - name: account_account
+      - name: account_journal
+
+  - name: ieg_db
+    description: "IEG Company Odoo database (via FDW)"
+    schema: ieg_raw
+    tables:
+      - name: account_move
+      - name: account_move_line
+      - name: account_account
+      - name: account_journal

@@ -1,0 +1,26 @@
+version: 2
+
+sources:
+  - name: tln_db
+    schema: tln_raw
+    tables:
+      - name: stock_move
+        description: "Stock movements"
+      - name: stock_picking
+        description: "Stock transfers"
+      - name: stock_location
+        description: "Warehouse locations"
+
+  - name: tmi_db
+    schema: tmi_raw
+    tables:
+      - name: stock_move
+      - name: stock_picking
+      - name: stock_location
+
+  - name: ieg_db
+    schema: ieg_raw
+    tables:
+      - name: stock_move
+      - name: stock_picking
+      - name: stock_location
