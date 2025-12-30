@@ -1,0 +1,40 @@
+# dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# Environment
+.env
+.env.local
+.env.*.local
+profiles.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Secrets - NEVER commit these
+*.pem
+*.key
+credentials.json
+secrets.yml

@@ -1,0 +1,113 @@
+version: 2
+
+sources:
+  - name: tln_db
+    description: "TLN Company Odoo database (via Foreign Data Wrapper)"
+    schema: tln_raw
+    tables:
+      - name: sale_order
+        description: "Sales orders from Odoo"
+        columns:
+          - name: id
+            description: "Primary key"
+            tests:
+              - unique
+              - not_null
+          - name: name
+            description: "Order reference number"
+          - name: partner_id
+            description: "Customer reference"
+          - name: date_order
+            description: "Order date"
+          - name: state
+            description: "Order status (draft, sent, sale, done, cancel)"
+          - name: amount_total
+            description: "Total order amount"
+
+      - name: sale_order_line
+        description: "Sales order line items"
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            description: "Reference to sale_order"
+          - name: product_id
+            description: "Product reference"
+          - name: product_uom_qty
+            description: "Quantity ordered"
+          - name: price_unit
+            description: "Unit price"
+          - name: price_subtotal
+            description: "Line subtotal"
+
+      - name: res_partner
+        description: "Customers, suppliers, and contacts"
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+          - name: name
+            description: "Partner name"
+          - name: email
+            description: "Email address"
+          - name: customer_rank
+            description: "Customer ranking"
+          - name: supplier_rank
+            description: "Supplier ranking"
+
+      - name: product_product
+        description: "Product variants"
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+
+      - name: product_template
+        description: "Product templates"
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+          - name: name
+            description: "Product name"
+
+      - name: account_move
+        description: "Journal entries (invoices, bills, etc.)"
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+          - name: name
+            description: "Move reference"
+          - name: move_type
+            description: "Type of move (out_invoice, in_invoice, etc.)"
+          - name: state
+            description: "State (draft, posted, cancel)"
+
+      - name: account_move_line
+        description: "Journal entry lines"
+
+      - name: res_company
+        description: "Companies"
+        columns:
+          - name: id
+            tests:
+              - unique
+              - not_null
+          - name: name
+            description: "Company name"
+
+      - name: res_currency
+        description: "Currencies"
+
+      - name: stock_picking
+        description: "Stock pickings (transfers)"
+
+      - name: stock_move
+        description: "Stock movements"

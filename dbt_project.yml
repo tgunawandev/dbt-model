@@ -1,0 +1,59 @@
+name: 'dbt_model'
+version: '1.0.0'
+config-version: 2
+
+profile: 'dbt_model'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Source company identifiers
+  tln_company_code: 'tln'
+  tmi_company_code: 'tmi'
+  ieg_company_code: 'ieg'
+
+models:
+  dbt_model:
+    # Staging models - views by default for source data
+    staging:
+      +materialized: view
+      +schema: staging
+      tln_db:
+        +tags: ['tln', 'staging']
+      tmi_db:
+        +tags: ['tmi', 'staging']
+      ieg_db:
+        +tags: ['ieg', 'staging']
+
+    # Intermediate models - ephemeral or views
+    intermediate:
+      +materialized: ephemeral
+      +schema: intermediate
+
+    # Mart models - tables for analytics consumption
+    marts:
+      +materialized: table
+      +schema: marts
+      sales:
+        +tags: ['sales', 'mart']
+      inventory:
+        +tags: ['inventory', 'mart']
+      finance:
+        +tags: ['finance', 'mart']
+
+seeds:
+  dbt_model:
+    +schema: seeds
+
+snapshots:
+  dbt_model:
+    +schema: snapshots

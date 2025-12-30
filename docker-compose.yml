@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  dbt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dbt-model
+    environment:
+      - DBT_POSTGRES_HOST=${DBT_POSTGRES_HOST:-116.203.191.172}
+      - DBT_POSTGRES_PORT=${DBT_POSTGRES_PORT:-5432}
+      - DBT_POSTGRES_USER=${DBT_POSTGRES_USER:-postgres}
+      - DBT_POSTGRES_PASSWORD=${DBT_POSTGRES_PASSWORD}
+      - DBT_POSTGRES_DATABASE=${DBT_POSTGRES_DATABASE:-analytics_db}
+    volumes:
+      - ./:/dbt
+      - dbt_packages:/dbt/dbt_packages
+      - dbt_target:/dbt/target
+      - dbt_logs:/dbt/logs
+    working_dir: /dbt
+    profiles:
+      - dev
+    entrypoint: ["dbt"]
+    command: ["debug"]
+
+  # dbt run service
+  dbt-run:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dbt-run
+    environment:
+      - DBT_POSTGRES_HOST=${DBT_POSTGRES_HOST:-116.203.191.172}
+      - DBT_POSTGRES_PORT=${DBT_POSTGRES_PORT:-5432}
+      - DBT_POSTGRES_USER=${DBT_POSTGRES_USER:-postgres}
+      - DBT_POSTGRES_PASSWORD=${DBT_POSTGRES_PASSWORD}
+      - DBT_POSTGRES_DATABASE=${DBT_POSTGRES_DATABASE:-analytics_db}
+    volumes:
+      - ./:/dbt
+      - dbt_packages:/dbt/dbt_packages
+      - dbt_target:/dbt/target
+      - dbt_logs:/dbt/logs
+    working_dir: /dbt
+    entrypoint: ["dbt"]
+    command: ["run"]
+
+  # dbt test service
+  dbt-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dbt-test
+    environment:
+      - DBT_POSTGRES_HOST=${DBT_POSTGRES_HOST:-116.203.191.172}
+      - DBT_POSTGRES_PORT=${DBT_POSTGRES_PORT:-5432}
+      - DBT_POSTGRES_USER=${DBT_POSTGRES_USER:-postgres}
+      - DBT_POSTGRES_PASSWORD=${DBT_POSTGRES_PASSWORD}
+      - DBT_POSTGRES_DATABASE=${DBT_POSTGRES_DATABASE:-analytics_db}
+    volumes:
+      - ./:/dbt
+      - dbt_packages:/dbt/dbt_packages
+      - dbt_target:/dbt/target
+      - dbt_logs:/dbt/logs
+    working_dir: /dbt
+    entrypoint: ["dbt"]
+    command: ["test"]
+
+  # dbt docs serve
+  dbt-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dbt-docs
+    ports:
+      - "8080:8080"
+    environment:
+      - DBT_POSTGRES_HOST=${DBT_POSTGRES_HOST:-116.203.191.172}
+      - DBT_POSTGRES_PORT=${DBT_POSTGRES_PORT:-5432}
+      - DBT_POSTGRES_USER=${DBT_POSTGRES_USER:-postgres}
+      - DBT_POSTGRES_PASSWORD=${DBT_POSTGRES_PASSWORD}
+      - DBT_POSTGRES_DATABASE=${DBT_POSTGRES_DATABASE:-analytics_db}
+    volumes:
+      - ./:/dbt
+      - dbt_packages:/dbt/dbt_packages
+      - dbt_target:/dbt/target
+      - dbt_logs:/dbt/logs
+    working_dir: /dbt
+    entrypoint: ["sh", "-c"]
+    command: ["dbt docs generate && dbt docs serve --port 8080"]
+
+volumes:
+  dbt_packages:
+  dbt_target:
+  dbt_logs:

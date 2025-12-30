@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: stg_tln__sales_orders
+    description: "Staged sales orders from TLN Odoo database"
+    columns:
+      - name: sale_order_id
+        description: "Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: order_number
+        description: "Sales order reference number"
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Foreign key to customers"
+      - name: order_date
+        description: "Date the order was placed"
+      - name: order_status
+        description: "Current status of the order"
+        tests:
+          - accepted_values:
+              values: ['draft', 'sent', 'sale', 'done']
+      - name: source_company
+        description: "Source company identifier"
+        tests:
+          - not_null
+
+  - name: stg_tln__sales_order_lines
+    description: "Staged sales order line items from TLN Odoo database"
+    columns:
+      - name: order_line_id
+        description: "Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: sale_order_id
+        description: "Foreign key to sales orders"
+        tests:
+          - not_null
+
+  - name: stg_tln__customers
+    description: "Staged customer and partner data from TLN Odoo database"
+    columns:
+      - name: partner_id
+        description: "Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: partner_name
+        description: "Customer/partner name"
+        tests:
+          - not_null
+
+  - name: stg_tln__products
+    description: "Staged product data from TLN Odoo database"
+    columns:
+      - name: product_id
+        description: "Primary key"
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_tln__invoices
+    description: "Staged invoice data from TLN Odoo database"
+    columns:
+      - name: invoice_id
+        description: "Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: invoice_type
+        description: "Type of invoice"
+        tests:
+          - accepted_values:
+              values: ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']

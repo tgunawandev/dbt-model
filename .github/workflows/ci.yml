@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  DBT_POSTGRES_HOST: ${{ secrets.DBT_POSTGRES_HOST }}
+  DBT_POSTGRES_PORT: ${{ secrets.DBT_POSTGRES_PORT }}
+  DBT_POSTGRES_USER: ${{ secrets.DBT_POSTGRES_USER }}
+  DBT_POSTGRES_PASSWORD: ${{ secrets.DBT_POSTGRES_PASSWORD }}
+
+jobs:
+  lint:
+    name: SQL Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install sqlfluff==3.0.7 sqlfluff-templater-dbt==3.0.7 dbt-postgres==1.7.9
+
+      - name: Create dbt profiles
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          dbt_model:
+            target: dev
+            outputs:
+              dev:
+                type: postgres
+                host: \${{ env.DBT_POSTGRES_HOST }}
+                port: 5432
+                user: \${{ env.DBT_POSTGRES_USER }}
+                password: \${{ env.DBT_POSTGRES_PASSWORD }}
+                dbname: analytics_db
+                schema: public
+                threads: 4
+          EOF
+
+      - name: Install dbt packages
+        run: dbt deps
+
+      - name: Run SQLFluff lint
+        run: sqlfluff lint models/ --dialect postgres || true
+
+  compile:
+    name: dbt Compile
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt
+        run: pip install dbt-postgres==1.7.9
+
+      - name: Create dbt profiles
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          dbt_model:
+            target: dev
+            outputs:
+              dev:
+                type: postgres
+                host: ${{ env.DBT_POSTGRES_HOST }}
+                port: 5432
+                user: ${{ env.DBT_POSTGRES_USER }}
+                password: ${{ env.DBT_POSTGRES_PASSWORD }}
+                dbname: analytics_db
+                schema: public
+                threads: 4
+          EOF
+
+      - name: Install dbt packages
+        run: dbt deps
+
+      - name: Compile dbt project
+        run: dbt compile
+
+  test:
+    name: dbt Test
+    runs-on: ubuntu-latest
+    needs: compile
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt
+        run: pip install dbt-postgres==1.7.9
+
+      - name: Create dbt profiles
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          dbt_model:
+            target: dev
+            outputs:
+              dev:
+                type: postgres
+                host: ${{ env.DBT_POSTGRES_HOST }}
+                port: 5432
+                user: ${{ env.DBT_POSTGRES_USER }}
+                password: ${{ env.DBT_POSTGRES_PASSWORD }}
+                dbname: analytics_db
+                schema: public
+                threads: 4
+          EOF
+
+      - name: Install dbt packages
+        run: dbt deps
+
+      - name: Run dbt tests
+        run: dbt test --warn-error
