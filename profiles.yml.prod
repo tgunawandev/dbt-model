@@ -1,0 +1,18 @@
+# Production dbt profile
+# Uses environment variables - DO NOT hardcode credentials
+
+dbt_model:
+  target: prod
+  outputs:
+    prod:
+      type: postgres
+      host: "{{ env_var('DBT_POSTGRES_HOST') }}"
+      port: "{{ env_var('DBT_POSTGRES_PORT', '5432') | int }}"
+      user: "{{ env_var('DBT_POSTGRES_USER') }}"
+      password: "{{ env_var('DBT_POSTGRES_PASSWORD') }}"
+      dbname: "{{ env_var('DBT_POSTGRES_DATABASE', 'analytics_db') }}"
+      schema: public
+      threads: 8
+      keepalives_idle: 0
+      connect_timeout: 30
+      retries: 3

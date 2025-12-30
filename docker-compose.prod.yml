@@ -1,0 +1,65 @@
+version: '3.8'
+
+# Production docker-compose for dbt
+# Uses pre-built images from GHCR, no container names (let Docker/Swarm assign)
+
+x-dbt-common: &dbt-common
+  image: ghcr.io/tgunawandev/dbt-model:${DBT_VERSION:-latest}
+  working_dir: /dbt
+  environment:
+    DBT_POSTGRES_HOST: ${DBT_POSTGRES_HOST:?required}
+    DBT_POSTGRES_PORT: ${DBT_POSTGRES_PORT:-5432}
+    DBT_POSTGRES_USER: ${DBT_POSTGRES_USER:?required}
+    DBT_POSTGRES_PASSWORD: ${DBT_POSTGRES_PASSWORD:?required}
+    DBT_POSTGRES_DATABASE: ${DBT_POSTGRES_DATABASE:-analytics_db}
+    DBT_TARGET: ${DBT_TARGET:-prod}
+  restart: "no"
+  networks:
+    - dbt-network
+
+services:
+  # One-shot: Run all models
+  dbt-run:
+    <<: *dbt-common
+    command: ["run", "--target", "prod"]
+
+  # One-shot: Run tests
+  dbt-test:
+    <<: *dbt-common
+    command: ["test", "--target", "prod"]
+
+  # One-shot: Generate docs
+  dbt-docs-generate:
+    <<: *dbt-common
+    command: ["docs", "generate", "--target", "prod"]
+    volumes:
+      - dbt-docs:/dbt/target
+
+  # Long-running: Serve docs
+  dbt-docs-serve:
+    <<: *dbt-common
+    command: ["docs", "serve", "--port", "8080"]
+    ports:
+      - "${DBT_DOCS_PORT:-8080}:8080"
+    volumes:
+      - dbt-docs:/dbt/target
+    restart: unless-stopped
+    depends_on:
+      - dbt-docs-generate
+
+  # One-shot: Full refresh (for incremental models)
+  dbt-full-refresh:
+    <<: *dbt-common
+    command: ["run", "--full-refresh", "--target", "prod"]
+
+  # One-shot: Run specific tag
+  dbt-run-finance:
+    <<: *dbt-common
+    command: ["run", "--select", "tag:core", "--target", "prod"]
+
+networks:
+  dbt-network:
+    driver: bridge
+
+volumes:
+  dbt-docs:

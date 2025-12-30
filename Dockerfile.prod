@@ -1,0 +1,63 @@
+# Production Dockerfile for dbt
+# Multi-stage build for smaller image
+
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dbt
+RUN pip install --no-cache-dir \
+    dbt-postgres==1.7.9
+
+# Copy project files
+COPY dbt_project.yml packages.yml ./
+COPY profiles.yml.prod ./profiles.yml
+
+# Install dbt packages
+RUN dbt deps
+
+# Production stage
+FROM python:3.11-slim
+
+LABEL maintainer="tgunawandev"
+LABEL description="dbt Data Warehouse - Production"
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -s /bin/bash dbt
+
+# Copy from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin/dbt /usr/local/bin/dbt
+COPY --from=builder /build/dbt_packages /dbt/dbt_packages
+
+WORKDIR /dbt
+
+# Copy project files
+COPY --chown=dbt:dbt dbt_project.yml packages.yml ./
+COPY --chown=dbt:dbt models/ ./models/
+COPY --chown=dbt:dbt macros/ ./macros/
+COPY --chown=dbt:dbt tests/ ./tests/
+COPY --chown=dbt:dbt seeds/ ./seeds/
+COPY --chown=dbt:dbt snapshots/ ./snapshots/
+COPY --chown=dbt:dbt analyses/ ./analyses/
+
+# Production profile using env vars
+COPY --chown=dbt:dbt profiles.yml.prod ./profiles.yml
+
+# Run as non-root
+USER dbt
+
+ENV DBT_PROFILES_DIR=/dbt
+
+ENTRYPOINT ["dbt"]
+CMD ["--help"]
