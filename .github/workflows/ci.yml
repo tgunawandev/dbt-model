@@ -1,11 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
-
+  workflow_dispatch:
 env:
   DBT_POSTGRES_HOST: ${{ secrets.DBT_POSTGRES_HOST }}
   DBT_POSTGRES_PORT: ${{ secrets.DBT_POSTGRES_PORT }}
